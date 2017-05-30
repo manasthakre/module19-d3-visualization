@@ -51,7 +51,6 @@ function update(newDataSet){
   //  `height` of 30
   //  `color` of '#286090'
   //Use a transition over 500ms to animate these changes
-  //console.log('transition');
   present
       .transition().duration(500)
         .attr('x', 20)
@@ -65,7 +64,7 @@ function update(newDataSet){
       .transition().duration(500)
       .attr('width', 0)
       .remove()
-  
+
   /** Apply the same data joining and update pattern for <text> elements.
    * Give entering and updating elements a text() of the student's name,
    * a `fill` attribute of 'white', an `x` attribute of 25, and a `y`
@@ -73,7 +72,7 @@ function update(newDataSet){
    * Use a similar transition for updating the attributes!
    **/
   var texts = svg.selectAll('text').data(newDataSet, function(d) {return d.id})
-   
+
   present = texts.enter().append('text')
       .merge(texts)
 
@@ -83,7 +82,7 @@ function update(newDataSet){
           .attr('fill', 'white')
           .attr('x', 25)
           .attr('y', function(d,i){return 40+i*40})
-    
+
   texts.exit().remove()
 }
 
