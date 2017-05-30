@@ -10,11 +10,11 @@ This module will introduce the basics of creating data-driven visualizations usi
 
 - [Resources](#resources)
 - [The Data Join](#the-data-join)
-  - [The General Update Pattern](#the-general-update-pattern)
+  - [Entering and Exiting Elements](#entering-and-exiting-elements)
+    - [Object Consistency](#object-consistency)
+    - [The General Update Pattern](#the-general-update-pattern)
 - [Scales](#scales)
-  - [Margins](#margins)
   - [Axes](#axes)
-- [Animation](#animation)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -28,7 +28,7 @@ Note that some of these resources may not be up-to-date with D3 version 4.0 (wha
   - [Margin Convention](https://bl.ocks.org/mbostock/3019563)
 - [Interactive Data Visualization for the Web (Murray)](http://chimera.labs.oreilly.com/books/1230000000345/index.html)
   - [Scales](http://chimera.labs.oreilly.com/books/1230000000345/ch07.html)
-  - [D3 Axes](http://chimera.labs.oreilly.com/books/1230000000345/ch08.html)
+  - [Axes](http://chimera.labs.oreilly.com/books/1230000000345/ch08.html)
 - [D3 Scales and Colors](http://www.jeromecukier.net/blog/2011/08/11/d3-scales-and-color/) (v3, but a good summary of features)
 - [INFO 474 Interactive Data Visualization (Freeman)](https://github.com/INFO-474). See in particular [module 7](https://github.com/INFO-474/m7-d3-intro) and [module 8](https://github.com/INFO-474/m8-scales).
 
@@ -179,15 +179,14 @@ function update(newDataArray) {
     rects.classed('updated', true);  //add style class to updating
 
     //Handle entering elements
-    rects.enter().append('rect')  //add new DOM elements
+    var present = rects.enter().append('rect')  //add new DOM elements
                 .classed('new', true)  //add style class to entering
-                .merge(rects);  //include the appended DOM in the selection
+                .merge(rect); //save new DOM elements in a selection
 
+    //Handle now present elements (the merged selection)
+    present.classed('here', true);  //add style class to current (including new)
 
-    //Handle present AND entered elements (since have been merged)
-    rects.classed('here', true);  //add style class to current (including new)
-
-    //Handle exiting elements
+    //Handle exiting elements (from original selection)
     rects.exit().remove();
 }
 ```
@@ -205,14 +204,72 @@ This process is known as the [General Update Pattern](https://bl.ocks.org/mbosto
 
 - In developing the `update()` function, you specify what the visualization should look like for _any_ set of data. Then you can change the data however you want, and the visualization will continue to reflect that!
 
+<!-- ## Animation -->
+<!-- //transitions
+//can skip for time, encourage students to look it up? Did do an example in an exercise... -->
 
 ## Scales
 In the `peopleTable` example, we _mapped_ exam scores to the `width` attribute directly: each point on an exam corresponded to a single unit (pixel) of width. But what if we were visualizing very small data (e.g., daily interest on a small investment) or very large data (e.g., number of books held by a library)? We would need to _scale_ the values used: that is, $0.001 earnings might be 20 pixels, or 100 books might be a single pixel.
 
-In D3, a **scale** is a function that _maps_ from the data ___domain___ (in data values) to the visualization's ___range___ (in pixel values) in a consistent way. Because this is such a common operation, D3 provides a set of [helper functions](https://github.com/d3/d3-scale) that can be used to easily generate these scales, allowing you to quickly specify a mapping (and dynamically change that mapping if the domain of the displayed data changes!)
+![Scaling example](img/d3scale1.png)
 
-...More details shortly...
+In D3, a **scale** is a function that _maps_ from the data ___domain___ (in data values) to the visualization's ___range___ (in pixel values) in a consistent way. For example, if we wanted to perform the scaling illustrated in the above diagram we would need to have the _domain_ of 20 to 80 (length of 60) map to the _range_ of 0 to 120 (length of 120). We could write a function that does the math to do this for any individual value within the range!
 
+```js
+var diagramScale = function(value){
+  var domainLength = 80-20; //length of domain
+  var rangeLength = 120-0; //length of range
+
+  //transform value to be between 0 and domainLength
+  var shifted = value - 20;  // 50 => 30
+
+  //scale (enlarge) the domain to the range
+  var rangeValue = shifted*(rangeLenth/domainLength);  // 30 => 60
+
+  return rangeValue;
+}
+
+//example
+var result = diagramScale(50);  //60, as above
+```
+
+- This math is doable, but can be tedious&mdash;especially if the mapping needs to be more complex (such as using a _logarithmic_ scale, or scaling values like colors).
+
+Because scaling is such a common operation, D3 provides a set of [helper functions](https://github.com/d3/d3-scale) that can be used to easily generate these _scaling functions_, allowing you to quickly specify a mapping (and dynamically change that mapping if the domain of the displayed data changes!)
+
+We can create a simple (linear) scale by calling the `d3.scaleLinear()` function. This function **returns a new function** that can be used to do the scaling!
+
+```js
+//create the scale function
+var scaleDiagram = d3.scaleLinear()
+                       .domain([20,60]) //specify the domain
+                       .range([0,120]); //specify the range
+
+var result = diagramScale(50); //60, as above
+var source = diagramScale.invert(60); //50, get the domain value from the range
+```
+
+- Important: `scaleDiagram` is a function! _Functions are values_, and in the `linearScale()` function returns a function as its result (instead of a string or an array).
+
+- We "set" the domain and range for the resulting function by calling the `domain()` and `range()` functions on it respectively. These functions take in an array of two or more values which are used to specify "stops" where a particular domain value will map to a particular range value. Anything values in between these values will be [linearly interpolated](https://en.wikipedia.org/wiki/Linear_interpolation) (hence the "linear scale").
+
+Note that it is also possible to use _colors_ as range values, producing a nice [gradient](https://en.wikipedia.org/wiki/Color_gradient):
+
+```js
+var scaleColor = d3.scaleLinear()
+                     .domain([-100, 0, 100])
+                     .range(['red', 'white', 'green']);  //using named colors
+
+scaleColor(100);  //rgb(0, 128, 0), or green
+scaleColor(0);    //rgb(255, 255, 255), or white
+scaleColor(-50);  //rgb(255, 128, 128), or pink (between red and white)
+```
+
+It is also possible to specify more options for a scale function by calling additional methods on it. For example, `clamp()` will make sure a domain value doesn't go outside the range, and `nice()`
+
+- Note that you can use the `d3.min()` and `d3.max()` helper methods to perform a **reducing** operating on an array to get its minimum or maximum value (similar to the Python functions). This is useful when specify the domain values to be dependet.
+
+D3 also supports creating non-linear scaling functions. For example, `d3.scaleLog()` will produce a logarithmic mapping, `d3.saleOrdinal()` will produce an [ordinal](https://en.wikipedia.org/wiki/Ordinal_data) mapping. See [the documentation](https://github.com/d3/d3-scale) for a complete list of options.
 
 
 ### Axes
@@ -220,9 +277,6 @@ In D3, a **scale** is a function that _maps_ from the data ___domain___ (in data
 <!-- #### Margins -->
 
 
-<!-- ## Animation -->
-<!-- //transitions
-//can skip for time, encourage students to look it up? Did do an example in an exercise... -->
 
 
 
