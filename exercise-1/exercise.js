@@ -14,16 +14,16 @@ var people2 = [
 ];
 
 //Create a variable `list` by selecting the element with an ID of `list`
-
+var list = d3.selectAll('#list');
 
 //select all of the <p> elements in the #list (there currently are none!)
-
+var pElement = list.d3.selectAll('p');
 
 //join the `people1` data set to the list item selection
-
+var dataJoin = people1.data(list);
 
 //Log out the `size()` of the data join (think: how many items are selected?)
-
+console.log(dataJoin.size())
 
 //For each "entering" element in the data join, create a new <p> item
 //Give that item text that contains BOTH the index number of the person and
