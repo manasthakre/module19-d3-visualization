@@ -84,8 +84,8 @@ d3.csv('data/WDI_2014_cleaned.csv', function(err, data){
         .style('opacity',0.3)
 
     //Define an bottom axis for the x-scale. Give it 5 tick mark values 
-    //using `",i"` as a format option (grouped integers)
-    var xAxis = d3.axisBottom(xScale).ticks(5, ',i');
+    //using `".0f"` as a format option (integers)
+    var xAxis = d3.axisBottom(xScale).ticks(5, '.0f');
 
     //Append a <g> element to the svg to contain the xAxis. Use the `transform`
     //attribute to `translate()` the element to below the display area.

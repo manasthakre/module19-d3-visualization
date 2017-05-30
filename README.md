@@ -204,9 +204,91 @@ This process is known as the [General Update Pattern](https://bl.ocks.org/mbosto
 
 - In developing the `update()` function, you specify what the visualization should look like for _any_ set of data. Then you can change the data however you want, and the visualization will continue to reflect that!
 
-<!-- ## Animation -->
-<!-- //transitions
-//can skip for time, encourage students to look it up? Did do an example in an exercise... -->
+## Animation
+D3 is primarily used for _dynamic_ data visualizations, in which the data being represented may change over time (otherwise, you would just use illustrator or a charting library). Whle _General Update Pattern_ allows us to easily implement consistent changes to the visualization when the data set change, we often want to add a "wow" factor by having those changes be **animated**. Elements should fly to their new position, slide into space, fade in or out, or perform some other kind of visual change over a short time. This can help the user understand what is going on as the data changes, as well as make the visualization seem more "smooth".
+
+With D3, we can animate element changes by using [**transitions**](https://github.com/d3/d3-transition). A transition applies changes to an element (e.g, `attr()` method calls) over a length of time, rather than instantaniously. For example, rather than instantly changing an rectangle's `width` attribute from `0` to `100` we could have that attribute take 1 second to change, causing the rectangle to "grow".
+
+- D3 transitions use [linear interpolation](https://en.wikipedia.org/wiki/Linear_interpolation) to determine the value of the attributes at different times. So if we transitionsed the width from `0` to `100` over 1 second, at the start of the second the width would be `0`, at the end it would be `100`, and halfway through (at 0.5 seconds) it would be `50`.
+
+We create a transition by calling the **`transition()`** method on a selection. This creates a new `transition`, upon which we can call normal DOM manipulation methos (specifically: `attr()`, `style()` and `text()`):
+
+```js
+d3.selectAll('rect').attr('width', 10).attr('height', 10);  //start at size 10
+
+d3.selectAll('rect').transition()  //create a transition
+    .attr('width', 100)   //call attribute to change over time
+    .attr('height', 100)  //this will animate simultaneously
+```
+
+- This example will cause the circle to "grow"!
+- In practice, anything after a `transition()` call in a method chain will be animated
+
+By default, transitions occur over 250 milliseconds (0.25 seconds). However, we can call additional methods on the `transition` in order to adjust this duration:
+
+```js
+d3.selectAll('rect').transition()  //create a transition
+    .duration(1000)  //animation takes 1000ms (1 second)
+    .delay(100)      //wait 100ms before starting
+    .attr('width', 100)   //call attribute to change over time
+    .attr('height', 100)  //this will animate simultaneously
+```
+
+We can use a sequence of `transition()` calls to make multiple transitions that occur one after another:
+
+```js
+d3.selectAll('rect')
+    .transition()  //create a transition
+        .attr('width', 100)   //first change the width
+    .transition()  //a second transition (occurs afterwards)
+        .attr('height', 100)  //then change the height
+```
+
+Transitions are a fun addition to include with any dynamic visualization; just add the `transition()` call into the chain before you update the attributes!
+
+- Note that in the General Update Pattern, transitions can be used for all three of entering, exiting, and updating elements. See [this demo](https://bl.ocks.org/mbostock/3808234) for an example.
+
+
+## Margins and Positioning
+When implementing a visualization, we often want to position groups of elements together. For example, we may want all of the circles in a scatter plot to be "centered" in the `<svg>` image, with some white space on the side (a **margin**) to use for titles or axes. While it is possible to do this positioning by carefully specifying the attributes (e.g., add `30` to each element's `x` attribute to give 30 pixels of white space), that can become tedious and error-prone&mdash;particularly if you want to change tha spacing later!
+
+However, it is possible to do this easily using SVG (with or without D3)! We are able to **group** SVG elements together by nesting them inside of a `<g>` (group) element. A `<g>` acts somewhat like a `<div>` in HTML&mdash;it has no visual appearance on its own, but can help to semantically organize DOM elements.
+
+- We can even give `<g>` elements `id` attributes, allowing us to easily select just the shapes inside of that group. See the previous module's exercise for an example.
+
+All elements in a `<g>` will be positioned **relative to the group**. A `<rect>` with an `x` of `0` will be positioned at the edge of its parent `<g>`&mdash;whereever that `<g>` happens to be! Thus we can easily add margins to groups of elements by nesting them in a `<g>`, and then positioning that `<g>` correctly
+
+The easiest way to position a `<g>` element is to specify it's [**`transform`**](https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform) attribute. This attribute takes as a value a string representing how that element should "move" (be transformed). The "transformation string" is written like a sequence of space-separated function calls, each specifying a different movement that should be applied. For example:
+
+```html
+<g transform="translate(20,50)"> <!-- move 20 in x, 50 in y -->
+   <rect x=0 y=0 width=20 height=20 fill="red"></rect>
+   <rect x=0 y=30 width=20 height=20 fill="blue"></rect>
+</g>
+```
+
+specifies that a group should be <a href="https://en.wikipedia.org/wiki/Translation_(geometry)">translated</a> or moved by 20 units (pixels) in the x direction and 5 units in the y direction.
+
+- Other transformations include `rotate(degrees)` to rotate an element _counterclockwise_ by the given degrees. You can both translate and rotate (in that order) using e.g., `transform="translate(20,50) rotate(45)"`.
+
+- All SVG elements support the `transform` attribute. In fact, angle can be used as a visual attribute!
+
+In D3, we use `<g>` groups to do positioning by creating a group with the appropriate transformation (constructing the "transformation function string" using String concatenation), then appending elements to that group:
+
+```js
+var group = svg.append('g') //add a group
+    //move over to add margins (specified as variables)
+    .attr('transform','translate('+marginLeft+','+marginTop+')')
+
+    //do the normal stuff
+group.selectAll('rect').data(myData)  //select all the rectangles in that group
+    .enter().append('rect')  //create new rectangles as normal
+      .attr('x',0)  //will be relative to the <g>
+      .attr('y',0)  //etc.
+```
+
+The margins are usually specified using variables. See [this demo](https://bl.ocks.org/mbostock/3019563) for an example (note: it uses D3 version 3).
+
 
 ## Scales
 In the `peopleTable` example, we _mapped_ exam scores to the `width` attribute directly: each point on an exam corresponded to a single unit (pixel) of width. But what if we were visualizing very small data (e.g., daily interest on a small investment) or very large data (e.g., number of books held by a library)? We would need to _scale_ the values used: that is, $0.001 earnings might be 20 pixels, or 100 books might be a single pixel.
@@ -271,13 +353,54 @@ It is also possible to specify more options for a scale function by calling addi
 
 D3 also supports creating non-linear scaling functions. For example, `d3.scaleLog()` will produce a logarithmic mapping, `d3.saleOrdinal()` will produce an [ordinal](https://en.wikipedia.org/wiki/Ordinal_data) mapping. See [the documentation](https://github.com/d3/d3-scale) for a complete list of options.
 
-
 ### Axes
+Scales allow us to effectively position elements based on the data they represent. Additionally, we often would like to display the scales to the user, so that they know what values are associated with what positions. We do this by including **axes** (plural of **axis**) in our visualization. An axis is a ___visual representation of a scale___ that the user is able to see, and are used to explain to the _human_ what the shapes in the visualization are depicting.
 
-<!-- #### Margins -->
+Since axes involve numerous elements to display (the axix bar, tick marks, labels on those tick marks, etc), D3 includes [_helper functions_](https://github.com/d3/d3-axis) that can be used to easily create these elements: `d3.axisBottom()` creates an axis with the tick marks and labels on the bottom, `d3.axisLeft()` creates an axis with the ticks and labels on the left, etc. We pass these functions the _scale_ that we want to create an axis for:
 
+```js
+var xScale = d3.scaleLinear().domain([20,60]).range([0,120]);  //the scale
+var xAxis = d3.axisBottom(xScale);  //make an axis for that scale
+```
 
+Like scales, an axis (returned by the `axisBottom()` function) **is itself a function**&mdash;you can think of it as an "axis creator" function. When called, the function will create and all of the appropriate DOM elements (in the correct positions!) for the axis, _appending_ those elements to the argument of the function:
 
+```js
+var axisGroup = svg.append('g')  //create and position a group to hold the axis
+    .attr('transform', 'translate('+axisXPosition+','+axisYPosition+')');
+xAxis(axisGroup);  //create the axis in that group
+```
 
+However, since this requires creating a separate variable for the "parent" of the axis, it is more common to have the _parent element itself_ execute the axis creator function **as a callback function** by using the `call()` method:
 
-.
+```js
+svg.append('g')  //create and position a group to hold the axis
+    .attr('transform', 'translate('+axisXPosition+','+axisYPosition+')')
+    .call(xAxis);  //call the axis creator function
+```
+
+With the `call()` method, the "executing" object (e.g., what we call the method on) will be passed in as the first argument to the callback&mdash;and since that is what the axis generator function expected, it will be able to create the axis in the correct location!
+
+- The `call()` method can also be used to "abstract" attribute modifications into separate functions for readability and ease of use:
+
+  ```js
+  //a function that applies "styling" attributes to the selection
+  function styleShape(selection){
+    selection
+        .attr('fill', 'gold')
+        .attr('stroke', 'rebeccapurple')
+        .attr('stroke-width', 5);
+  }
+
+  dataJoin.enter().append('rect')  //create new rects for each data element
+      .call(styleShape) //apply styling to those elements!
+  ```
+
+As with _transitions_ and _scales_, there are [numerous methods](https://github.com/d3/d3-axis) you can use to customize the axis created by the axis function. The most common options involve styling the tick marks by calling the `ticks()` method on the axis. This method usually takes two arguments: the number of tick marks to include, and a [format string](https://github.com/d3/d3-format) specifying the format of the labels:
+
+```js
+var xAxis = d3.axisBottom(xScale);  //make an axis for that scale
+xAxis.ticks(7, '.0f')  //7 tick marks, format with 0 nums after the decimal
+```
+
+- The second argument is a formatting string similar to that used in Python string formatting. You can also specify this formatting using the `d3.format()` function. See [this tool](http://bl.ocks.org/zanarmstrong/05c1e95bf7aa16c4768e) to experiment with options.
