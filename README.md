@@ -13,6 +13,8 @@ This module will introduce the basics of creating data-driven visualizations usi
   - [Entering and Exiting Elements](#entering-and-exiting-elements)
     - [Object Consistency](#object-consistency)
     - [The General Update Pattern](#the-general-update-pattern)
+- [Animation](#animation)
+- [Margins and Positioning](#margins-and-positioning)
 - [Scales](#scales)
   - [Axes](#axes)
 
